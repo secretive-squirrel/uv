@@ -1,6 +1,6 @@
 Ultraviolet Exposure Unit Timer Software
 
-This software is supplied without any liabitlity and without any support. If you do not understand how or why something works you will need to assume responsibility for your own education - Some of these things may be dangerous, and this may not be noted, UV is dangerous, electrical things catch fire, lead is poisonous, soldering irons get hot, etc... 
+This software is supplied without any liability and without any support. If you do not understand how or why something works you will need to assume responsibility for your own education - Some of these things may be dangerous, and this may not be noted, UV is dangerous, electrical things catch fire, lead is poisonous, soldering irons get hot, etc... 
 
 The basic parts of this setup are as follows;
 
