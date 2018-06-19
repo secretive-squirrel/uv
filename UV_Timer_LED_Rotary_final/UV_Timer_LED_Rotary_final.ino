@@ -3,7 +3,7 @@
    Uses relay to switch on 12v led strips
    input rotary encoder
    input thermistor for safety
-
+  This is not yet a completed project, I'm just putting a pin in it for now.
    three pins out to 74HC595 for common-anode seven-segment display
    three pins out to control individual digits and three pins
 
@@ -12,9 +12,7 @@
 //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 //xxxxxxxxxxxxxxxx - PAUSE FUNCTIONS START
 
-bool hot = false;
-bool warm = false;
-
+int sensorTemp = 0;
 int go_Button = A4;
 
 const int LEDOrange = A5;
@@ -111,22 +109,22 @@ void setup()  //  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
   //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   //xxxxxxxxxxxxxxxx - PAUSE FUNCTIONS START
   pinMode(go_Button, INPUT_PULLUP);
-  
-  pinMode(relay, OUTPUT); //relay 
-  
+
+  pinMode(relay, OUTPUT); //relay
+
   pinMode(therm, INPUT); //thermistor
-    
+
   pinMode(reed, INPUT); //thermistor
   digitalWrite(reed, HIGH);
-  
+
   pinMode(fan, OUTPUT);
-  
+
   pinMode(LEDOrange, OUTPUT);
   pinMode(LEDRed, OUTPUT);
   pinMode(LEDGreen, OUTPUT);
   pinMode(LEDBlue, OUTPUT);
 
- 
+
 
 
   //xxxxxxxxxxxxxxxx - PAUSE FUNCTIONS END
@@ -138,31 +136,7 @@ void loop()  //  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++
 {
-
-//  digitalWrite(LEDOrange, HIGH);
-//  delay (5);
-//  digitalWrite(LEDOrange, LOW);
-//  // //then
-//  digitalWrite(LEDRed, HIGH);
-//  delay (5);
-//  digitalWrite(LEDRed, LOW);
-//  // //then
-//  digitalWrite(LEDGreen, HIGH);
-//  delay (5);
-//  digitalWrite(LEDGreen, LOW);
-//  // //then
-//  digitalWrite(LEDBlue, HIGH);
-//  delay (5);
-//  digitalWrite(LEDBlue, LOW);
-//  //then
-//  digitalWrite(fan, HIGH);
-//  delay (3000);
-//  digitalWrite(fan, LOW);
-//  delay (3000);
-//
-
-
-  
+  //All this stuff is to get the rotary encoder read
   rotating = true;  // reset the debouncer
 
   if (lastReportedPos != encoderPos) {
@@ -183,23 +157,20 @@ void loop()  //  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     encoderPos = 0;
   }
 
- 
-// Always check temperature
-//checkTemp();
-
+  // And show the results
   disp_3_digit(encoderPos);
 
-//then trigger go button
-  
-if (digitalRead(reed) == LOW)
+  //then trigger go button
+
+  if (digitalRead(reed) == LOW) //if lid shut
   {
-    digitalWrite(LEDBlue, LOW);
+    digitalWrite(LEDBlue, LOW); //safety light off
     if (digitalRead(go_Button) == LOW)
     {
       go_Pause();
     }
   }
-else if (digitalRead(reed) == HIGH)
+  else if (digitalRead(reed) == HIGH)
   {
     digitalWrite(LEDBlue, HIGH);
   }
@@ -278,95 +249,119 @@ void doEncoderB() {
 }
 //xxxxxxxxxxxxxxxx -  ROTARY ENCODER CODE - END
 //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-//xxxxxxxxxxxxxxxx - PAUSE FUNCTIONS START
+//xxxxxxxxxxxxxxxx - PAUSE FUNCTIONS START XXXXXXXXXXXXXXX
 
-  void go_Pause()   // - [GO/PAUSE BUTTON] - GO FUNCTION
+void go_Pause()   // - [GO/PAUSE BUTTON] - GO FUNCTION
 {
 
-if (encoderPos>0)
-{
-  delay(1000);
-  counter = (encoderPos);
-  digitalWrite(LEDGreen, HIGH);
-  digitalWrite(relay, HIGH);
-  
-  
+  if (encoderPos > 0)
+  {
+    delay(1000);
+    counter = (encoderPos);
+    digitalWrite(LEDGreen, HIGH);
+    digitalWrite(relay, HIGH);
+
+
     while (counter > 0) //Seconds Display Loop
+    {
+      int i = 97;
+      while (i > 0) // 99 loops each second
       {
-        int i = 97;
-        checkTemp();
-        while (i > 0) // 99 loops each second
-          {  
-            disp_3_digit(counter);  //display
-            delay(10);              //wait 10ms
-            // Now check stuff - every 12ms is fine
-            if (digitalRead(go_Button) == LOW)
-              {
-                Pause(); // CALL FUNCTION BELOW IF 
-               }         // GO/PAUSE BUTTON PRESSED
-            else;
-            i -=1;
-          }
-        counter -=1;
+        disp_3_digit(counter);  //display
+        delay(10);              //wait 10ms
+        // Now check stuff - every 12ms is fine
+        if (analogRead(therm) > 600)
+        {
+          disp_3_digit(888);
+          digitalWrite(LEDOrange, LOW);
+          digitalWrite(LEDRed, HIGH);
+          digitalWrite(relay, LOW);   //turn off UV light
+          digitalWrite(fan, HIGH);
+          delay(10000);              // wait for 10 seconds
+        }
+        else if (analogRead(therm) > 500)   //getting warm, turn on fan
+        {
+          digitalWrite(LEDOrange, HIGH); //signal warm
+          digitalWrite(LEDRed, LOW);     //tidy up
+          digitalWrite(LEDGreen, HIGH);
+          digitalWrite(relay, HIGH);   //turn on UV light
+          digitalWrite(fan, HIGH);   //turn on fan
+        }
+        else
+        {
+          digitalWrite(LEDOrange, LOW);
+          digitalWrite(LEDRed, LOW);     //tidy up
+          digitalWrite(LEDGreen, HIGH);
+          digitalWrite(LEDBlue, LOW);
+          digitalWrite(relay, HIGH);   //turn on UV light
+          digitalWrite(fan, LOW);   //turn off fan
+        }
+
+
+        if (digitalRead(go_Button) == LOW)
+        {
+          Pause(); // CALL FUNCTION BELOW IF
+        }         // GO/PAUSE BUTTON PRESSED
+        else;
+        i -= 1;
       }
-   digitalWrite(relay, LOW);
-   digitalWrite(LEDGreen, LOW);
+      counter -= 1;
+    }
+    digitalWrite(relay, LOW);
+    digitalWrite(LEDGreen, LOW);
   }
 }
-// FUNCTION FOR PAUSING THE EXPOSURE
+//XXXXXXXXXXXXX FUNCTION FOR PAUSING THE EXPOSURE XXXXXXXXXXXXXX
 
 void Pause()   // - [GO/PAUSE BUTTON] - PAUSE FUNCTION
 {
   int keep = 0; //keep track of light flashing
-  
+
   digitalWrite(LEDOrange, HIGH);
   digitalWrite(LEDRed, HIGH);
   digitalWrite(LEDGreen, HIGH);
   digitalWrite(LEDBlue, HIGH);
-  
+
   digitalWrite(relay, LOW);   //turn off UV light
   delay(1000); //force minimum one second pause for debounce
 
-//  structural stuff - turn stuff off -- pause - then...
+  //  structural stuff - turn stuff off -- pause - then...
 
-// MAKE LOOP WHAT HAPPENS OF BUTTON NOT PRESSED
+  // MAKE LOOP WHAT HAPPENS IF BUTTON NOT PRESSED
 
   if (digitalRead(go_Button) != LOW) //check pause button
   {
-// FIRST INDICATOR LEDS
+    // FIRST INDICATOR LEDS
 
-// TIME KILLING LOOP TO MAKE THE LIGHT FLASH
-    for (int i = 0;i=25;i++)
+    //  digitalWrite(fan, HIGH);
+    //  delay (3000);
+    //  digitalWrite(fan, LOW);
+    //  delay (3000);
+    // END OF INDICATOR -  carry on
+
+    // TIME KILLING LOOP
+    for (int i = 0; i = 25; i++)
+
+    {
+      if (digitalRead(go_Button) == LOW)
       {
-        checkTemp();
-        if (digitalRead(go_Button) == LOW)
-          {
-            //IF BROKEN OUT OF LOOP RETURN TO GO LOOP
-            delay(1000); //force minimum one second pause for debounce
-            digitalWrite(relay, HIGH);
-            //digitalWrite(LEDGreen, HIGH);
-              digitalWrite(LEDOrange, LOW);
-              digitalWrite(LEDRed, LOW);
-              digitalWrite(LEDBlue, LOW);
-             break; //i=25; // Just break out if button pressed
-          }
-        else
-          {
-            checkTemp();    
-            delay(20);  //wait a bit
-          }
-       }
-//LOOP BACK TO CHECK STATE OF PAUSE BUTTON
-   }
+        //IF BROKEN OUT OF LOOP RETURN TO GO LOOP
+        delay(1000); //force minimum one second pause for debounce
+        digitalWrite(relay, HIGH);
+        //digitalWrite(LEDGreen, HIGH);
+        digitalWrite(LEDOrange, LOW);
+        digitalWrite(LEDRed, LOW);
+        digitalWrite(LEDBlue, LOW);
+        break; //i=25; // Just break out if button pressed
+      }
+      else
+      {
+        delay(20);  //wait a bit
+        disp_3_digit(888);
+      }
+    }
+    //LOOP BACK TO CHECK STATE OF PAUSE BUTTON
+  }
 }
-
-
-//
-void checkTemp()
-{
-  int sensorValue = analogRead(A0);
-}
-
-
 
 
